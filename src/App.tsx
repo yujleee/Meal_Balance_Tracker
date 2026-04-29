@@ -217,8 +217,8 @@ const App = () => {
       >
         <div className={`rounded-3xl p-8 shadow-xl ${
           balance < 7000
-            ? 'bg-gradient-to-br from-red-500 to-pink-600'
-            : 'bg-gradient-to-br from-blue-500 to-purple-600'
+            ? 'bg-gradient-to-br from-rose-400 to-red-500'
+            : 'bg-gradient-to-br from-sky-400 to-blue-500'
         }`}>
           <div className="text-white/80 text-sm font-medium mb-2">현재 잔액</div>
           <motion.div
@@ -293,7 +293,7 @@ const App = () => {
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowChargeModal(true)}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-4 shadow-md hover:shadow-lg transition-shadow flex items-center justify-center gap-2"
+            className="bg-gradient-to-r from-emerald-400 to-teal-500 rounded-2xl p-4 shadow-md hover:shadow-lg transition-shadow flex items-center justify-center gap-2"
           >
             <span className="text-xl">💰</span>
             <span className="text-sm font-semibold text-white">충전하기</span>
@@ -373,7 +373,7 @@ const App = () => {
                 )}
                 <button
                   onClick={handleSetInitialBalance}
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium"
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 text-white font-medium"
                 >
                   설정
                 </button>
@@ -419,7 +419,7 @@ const App = () => {
                 </button>
                 <button
                   onClick={handleCharge}
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium"
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 text-white font-medium"
                 >
                   충전
                 </button>
@@ -472,7 +472,7 @@ const App = () => {
                 </button>
                 <button
                   onClick={handleCustomExpense}
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium"
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 text-white font-medium"
                 >
                   차감
                 </button>
