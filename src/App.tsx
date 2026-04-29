@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { auth, db } from './firebase';
+import LoginScreen from './LoginScreen';
 
-// 타입 정의
 interface Transaction {
   id: string;
   type: 'expense' | 'charge';
@@ -18,6 +21,10 @@ interface Preset {
 }
 
 const App = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [isNewUser, setIsNewUser] = useState(false);
+
   const [balance, setBalance] = useState<number>(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showChargeModal, setShowChargeModal] = useState(false);
@@ -30,31 +37,37 @@ const App = () => {
   const [showInitModal, setShowInitModal] = useState(false);
   const [initAmount, setInitAmount] = useState('');
 
-  // 프리셋 버튼 설정
   const [presets] = useState<Preset[]>([
     { id: 'lunch', label: '점심', amount: 7000, emoji: '🍱' },
     { id: 'coffee-l', label: '커피 L', amount: 1500, emoji: '☕' },
     { id: 'coffee-s', label: '커피 S', amount: 990, emoji: '🥤' },
   ]);
 
-  // LocalStorage에서 데이터 로드
+  // 인증 상태 감지
   useEffect(() => {
-    const savedBalance = localStorage.getItem('mealBalance');
-    const savedTransactions = localStorage.getItem('mealTransactions');
-
-    if (savedBalance !== null) {
-      setBalance(parseFloat(savedBalance));
-    } else {
-      setShowInitModal(true);
-    }
-    if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
+    return onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+    });
   }, []);
 
-  // 데이터 저장
+  // Firestore 실시간 동기화
   useEffect(() => {
-    localStorage.setItem('mealBalance', balance.toString());
-    localStorage.setItem('mealTransactions', JSON.stringify(transactions));
-  }, [balance, transactions]);
+    if (!user) return;
+    const docRef = doc(db, 'users', user.uid);
+    const unsub = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setBalance(data.balance ?? 0);
+        setTransactions(data.transactions ?? []);
+        setIsNewUser(false);
+      } else {
+        setIsNewUser(true);
+        setShowInitModal(true);
+      }
+    });
+    return unsub;
+  }, [user]);
 
   // Undo 타이머
   useEffect(() => {
@@ -64,16 +77,22 @@ const App = () => {
     }
   }, [showUndo]);
 
-  // 초기 잔액 설정
+  const save = (newBalance: number, newTransactions: Transaction[]) => {
+    if (!user) return;
+    setDoc(doc(db, 'users', user.uid), {
+      balance: newBalance,
+      transactions: newTransactions,
+    });
+  };
+
   const handleSetInitialBalance = () => {
     const amount = parseFloat(initAmount);
     if (isNaN(amount) || amount < 0) return;
-    setBalance(amount);
+    save(amount, transactions);
     setInitAmount('');
     setShowInitModal(false);
   };
 
-  // 차감 처리
   const handleExpense = (amount: number, label: string) => {
     const transaction: Transaction = {
       id: Date.now().toString(),
@@ -82,18 +101,18 @@ const App = () => {
       label,
       timestamp: Date.now(),
     };
-
-    setBalance(prev => prev - amount);
-    setTransactions(prev => [transaction, ...prev]);
+    const newBalance = balance - amount;
+    const newTransactions = [transaction, ...transactions];
+    setBalance(newBalance);
+    setTransactions(newTransactions);
+    save(newBalance, newTransactions);
     setLastAction(transaction);
     setShowUndo(true);
   };
 
-  // 충전 처리
   const handleCharge = () => {
     const amount = parseFloat(chargeAmount);
     if (!amount || amount <= 0) return;
-
     const transaction: Transaction = {
       id: Date.now().toString(),
       type: 'charge',
@@ -101,61 +120,63 @@ const App = () => {
       label: '잔액 충전',
       timestamp: Date.now(),
     };
-
-    setBalance(prev => prev + amount);
-    setTransactions(prev => [transaction, ...prev]);
+    const newBalance = balance + amount;
+    const newTransactions = [transaction, ...transactions];
+    setBalance(newBalance);
+    setTransactions(newTransactions);
+    save(newBalance, newTransactions);
     setLastAction(transaction);
     setShowUndo(true);
     setChargeAmount('');
     setShowChargeModal(false);
   };
 
-  // 커스텀 차감 처리
   const handleCustomExpense = () => {
     const amount = parseFloat(customAmount);
     if (!amount || amount <= 0 || !customLabel.trim()) return;
-
     handleExpense(amount, customLabel);
     setCustomAmount('');
     setCustomLabel('');
     setShowCustomModal(false);
   };
 
-  // 되돌리기
   const handleUndo = () => {
     if (!lastAction) return;
-
-    if (lastAction.type === 'expense') {
-      setBalance(prev => prev + lastAction.amount);
-    } else {
-      setBalance(prev => prev - lastAction.amount);
-    }
-
-    setTransactions(prev => prev.filter(t => t.id !== lastAction.id));
+    const newBalance = lastAction.type === 'expense'
+      ? balance + lastAction.amount
+      : balance - lastAction.amount;
+    const newTransactions = transactions.filter(t => t.id !== lastAction.id);
+    setBalance(newBalance);
+    setTransactions(newTransactions);
+    save(newBalance, newTransactions);
     setLastAction(null);
     setShowUndo(false);
   };
 
-  // 날짜 포맷팅
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-
     if (date.toDateString() === today.toDateString()) {
       return `오늘 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
     } else if (date.toDateString() === yesterday.toDateString()) {
       return `어제 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    } else {
-      return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
     }
+    return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
 
-  // 금액 포맷팅
-  const formatCurrency = (amount: number) => {
-    return amount.toLocaleString('ko-KR');
-  };
+  const formatCurrency = (amount: number) => amount.toLocaleString('ko-KR');
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="text-slate-400 text-sm">로딩 중...</div>
+      </div>
+    );
+  }
+
+  if (!user) return <LoginScreen />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 pb-20">
@@ -165,13 +186,27 @@ const App = () => {
           🍴 식대 관리
         </h1>
         <p className="text-sm text-slate-500 text-center">Personal Meal Budget Tracker</p>
-        <button
-          onClick={() => { setInitAmount(balance.toString()); setShowInitModal(true); }}
-          className="absolute right-2 top-8 p-2 text-slate-400 hover:text-slate-600 transition-colors"
-          title="잔액 설정"
-        >
-          ⚙️
-        </button>
+        <div className="absolute right-2 top-8 flex items-center gap-2">
+          <button
+            onClick={() => { setInitAmount(balance.toString()); setShowInitModal(true); }}
+            className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+            title="잔액 설정"
+          >
+            ⚙️
+          </button>
+          <button
+            onClick={() => signOut(auth)}
+            title={`${user.displayName ?? ''} · 로그아웃`}
+          >
+            {user.photoURL ? (
+              <img src={user.photoURL} alt="profile" className="w-8 h-8 rounded-full border-2 border-slate-200" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center text-sm font-medium text-slate-600">
+                {user.displayName?.[0] ?? '?'}
+              </div>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* 잔액 카드 */}
@@ -181,8 +216,8 @@ const App = () => {
         animate={{ scale: 1, opacity: 1 }}
       >
         <div className={`rounded-3xl p-8 shadow-xl ${
-          balance < 7000 
-            ? 'bg-gradient-to-br from-red-500 to-pink-600' 
+          balance < 7000
+            ? 'bg-gradient-to-br from-red-500 to-pink-600'
             : 'bg-gradient-to-br from-blue-500 to-purple-600'
         }`}>
           <div className="text-white/80 text-sm font-medium mb-2">현재 잔액</div>
@@ -194,7 +229,6 @@ const App = () => {
           >
             {formatCurrency(balance)}원
           </motion.div>
-          
           {balance < 7000 && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -286,20 +320,13 @@ const App = () => {
                   className="p-4 flex items-center justify-between"
                 >
                   <div className="flex-1">
-                    <div className="font-medium text-slate-800 mb-1">
-                      {transaction.label}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      {formatDate(transaction.timestamp)}
-                    </div>
+                    <div className="font-medium text-slate-800 mb-1">{transaction.label}</div>
+                    <div className="text-xs text-slate-500">{formatDate(transaction.timestamp)}</div>
                   </div>
                   <div className={`text-lg font-bold ${
-                    transaction.type === 'charge' 
-                      ? 'text-green-600' 
-                      : 'text-red-600'
+                    transaction.type === 'charge' ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {transaction.type === 'charge' ? '+' : '-'}
-                    {formatCurrency(transaction.amount)}원
+                    {transaction.type === 'charge' ? '+' : '-'}{formatCurrency(transaction.amount)}원
                   </div>
                 </motion.div>
               ))}
@@ -336,7 +363,7 @@ const App = () => {
                 autoFocus
               />
               <div className="flex gap-3">
-                {localStorage.getItem('mealBalance') !== null && (
+                {!isNewUser && (
                   <button
                     onClick={() => setShowInitModal(false)}
                     className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 font-medium"
@@ -378,6 +405,7 @@ const App = () => {
                 type="number"
                 value={chargeAmount}
                 onChange={(e) => setChargeAmount(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCharge()}
                 placeholder="충전 금액을 입력하세요"
                 className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-green-500 focus:outline-none mb-4"
                 autoFocus
@@ -431,6 +459,7 @@ const App = () => {
                 type="number"
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCustomExpense()}
                 placeholder="금액을 입력하세요"
                 className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-blue-500 focus:outline-none mb-4"
               />
