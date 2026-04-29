@@ -27,6 +27,8 @@ const App = () => {
   const [customLabel, setCustomLabel] = useState('');
   const [lastAction, setLastAction] = useState<Transaction | null>(null);
   const [showUndo, setShowUndo] = useState(false);
+  const [showInitModal, setShowInitModal] = useState(false);
+  const [initAmount, setInitAmount] = useState('');
 
   // 프리셋 버튼 설정
   const [presets] = useState<Preset[]>([
@@ -40,7 +42,11 @@ const App = () => {
     const savedBalance = localStorage.getItem('mealBalance');
     const savedTransactions = localStorage.getItem('mealTransactions');
 
-    if (savedBalance) setBalance(parseFloat(savedBalance));
+    if (savedBalance !== null) {
+      setBalance(parseFloat(savedBalance));
+    } else {
+      setShowInitModal(true);
+    }
     if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
   }, []);
 
@@ -57,6 +63,15 @@ const App = () => {
       return () => clearTimeout(timer);
     }
   }, [showUndo]);
+
+  // 초기 잔액 설정
+  const handleSetInitialBalance = () => {
+    const amount = parseFloat(initAmount);
+    if (isNaN(amount) || amount < 0) return;
+    setBalance(amount);
+    setInitAmount('');
+    setShowInitModal(false);
+  };
 
   // 차감 처리
   const handleExpense = (amount: number, label: string) => {
@@ -145,11 +160,18 @@ const App = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 pb-20">
       {/* 헤더 */}
-      <div className="max-w-md mx-auto pt-8 pb-6">
+      <div className="max-w-md mx-auto pt-8 pb-6 relative">
         <h1 className="text-2xl font-bold text-slate-800 text-center mb-2">
           🍴 식대 관리
         </h1>
         <p className="text-sm text-slate-500 text-center">Personal Meal Budget Tracker</p>
+        <button
+          onClick={() => { setInitAmount(balance.toString()); setShowInitModal(true); }}
+          className="absolute right-2 top-8 p-2 text-slate-400 hover:text-slate-600 transition-colors"
+          title="잔액 설정"
+        >
+          ⚙️
+        </button>
       </div>
 
       {/* 잔액 카드 */}
@@ -285,6 +307,54 @@ const App = () => {
           )}
         </div>
       </div>
+
+      {/* 초기 잔액 설정 모달 */}
+      <AnimatePresence>
+        {showInitModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 max-w-sm mx-auto bg-white rounded-3xl p-6 shadow-2xl z-50"
+            >
+              <h3 className="text-xl font-bold text-slate-800 mb-2">⚙️ 잔액 설정</h3>
+              <p className="text-sm text-slate-500 mb-4">현재 보유한 식대 잔액을 입력해주세요</p>
+              <input
+                type="number"
+                value={initAmount}
+                onChange={(e) => setInitAmount(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSetInitialBalance()}
+                placeholder="잔액을 입력하세요"
+                className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-blue-500 focus:outline-none mb-4"
+                autoFocus
+              />
+              <div className="flex gap-3">
+                {localStorage.getItem('mealBalance') !== null && (
+                  <button
+                    onClick={() => setShowInitModal(false)}
+                    className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 font-medium"
+                  >
+                    취소
+                  </button>
+                )}
+                <button
+                  onClick={handleSetInitialBalance}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium"
+                >
+                  설정
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* 충전 모달 */}
       <AnimatePresence>
