@@ -19,28 +19,52 @@ const LoginScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#F2F2F7] flex flex-col items-center justify-center px-6">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-3xl p-8 shadow-xl max-w-sm w-full text-center"
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-sm"
       >
-        <div className="text-6xl mb-4">🍴</div>
-        <h1 className="text-2xl font-bold text-slate-800 mb-2">식대 관리</h1>
-        <p className="text-sm text-slate-500 mb-8">Personal Meal Budget Tracker</p>
+        {/* 앱 아이콘 */}
+        <div className="flex justify-center mb-8">
+          <div className="w-24 h-24 bg-[#1C1C1E] rounded-[26px] shadow-xl flex items-center justify-center">
+            <span className="text-5xl">🍴</span>
+          </div>
+        </div>
 
-        <button
+        {/* 타이틀 */}
+        <div className="text-center mb-10">
+          <h1 className="text-[28px] font-bold text-[#1C1C1E] tracking-tight mb-1">식대 관리</h1>
+          <p className="text-[15px] text-[#8E8E93]">식대 잔액을 간편하게 관리하세요</p>
+        </div>
+
+        {/* 로그인 버튼 */}
+        <motion.button
+          whileTap={{ scale: 0.97 }}
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-200 rounded-xl py-3 px-4 font-medium text-slate-700 hover:border-slate-300 hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-white rounded-2xl py-4 px-5 shadow-sm flex items-center justify-center gap-3 disabled:opacity-50"
         >
           <GoogleIcon />
-          {loading ? '로그인 중...' : 'Google로 로그인'}
-        </button>
+          <span className="text-[15px] font-semibold text-[#1C1C1E]">
+            {loading ? '로그인 중...' : 'Google로 계속하기'}
+          </span>
+        </motion.button>
 
         {error && (
-          <p className="mt-3 text-sm text-red-500">{error}</p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-3 text-center text-sm text-[#FF3B30]"
+          >
+            {error}
+          </motion.p>
         )}
+
+        <p className="text-center text-xs text-[#C7C7CC] mt-8">
+          로그인하면 모든 기기에서 잔액이 동기화됩니다
+        </p>
       </motion.div>
     </div>
   );
