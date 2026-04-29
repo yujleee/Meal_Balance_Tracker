@@ -220,9 +220,15 @@ const App = () => {
   };
 
   const handleDeleteTransaction = (id: string) => {
+    const target = transactions.find(t => t.id === id);
+    if (!target) return;
+    const newBalance = target.type === 'expense'
+      ? balance + target.amount
+      : balance - target.amount;
     const newTransactions = transactions.filter(t => t.id !== id);
+    setBalance(newBalance);
     setTransactions(newTransactions);
-    save(balance, newTransactions);
+    save(newBalance, newTransactions);
   };
 
   const formatDate = (timestamp: number) => {
