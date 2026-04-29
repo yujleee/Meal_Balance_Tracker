@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+// @ts-ignore: CSS module declaration missing
 import './index.css';
 
 // PWA 서비스 워커 등록
