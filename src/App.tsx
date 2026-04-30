@@ -116,6 +116,8 @@ const App = () => {
   const [showUndo, setShowUndo] = useState(false);
   const [showInitModal, setShowInitModal] = useState(false);
   const [initAmount, setInitAmount] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 12;
 
   const [presets] = useState<Preset[]>([
     { id: 'lunch', label: '점심', amount: 7000, emoji: '🍱' },
@@ -178,6 +180,7 @@ const App = () => {
     save(newBalance, newTransactions);
     setLastAction(transaction);
     setShowUndo(true);
+    setCurrentPage(1);
   };
 
   const handleCharge = () => {
@@ -193,6 +196,7 @@ const App = () => {
     save(newBalance, newTransactions);
     setLastAction(transaction);
     setShowUndo(true);
+    setCurrentPage(1);
     setChargeAmount('');
     setShowChargeModal(false);
   };
@@ -226,6 +230,8 @@ const App = () => {
       ? balance + target.amount
       : balance - target.amount;
     const newTransactions = transactions.filter(t => t.id !== id);
+    const newTotalPages = Math.max(1, Math.ceil(newTransactions.length / PAGE_SIZE));
+    if (currentPage > newTotalPages) setCurrentPage(newTotalPages);
     setBalance(newBalance);
     setTransactions(newTransactions);
     save(newBalance, newTransactions);
@@ -246,6 +252,9 @@ const App = () => {
 
   const formatCurrency = (amount: number) => amount.toLocaleString('ko-KR');
 
+  const totalPages = Math.max(1, Math.ceil(transactions.length / PAGE_SIZE));
+  const pagedTransactions = transactions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center">
@@ -261,7 +270,7 @@ const App = () => {
 
       {/* 헤더 */}
       <div className="px-4 pt-14 pb-2 flex items-center justify-between">
-        <h1 className="text-[28px] font-bold text-[#1C1C1E] tracking-tight">식대 관리</h1>
+        <h1 className="text-[28px] font-bold text-[#1C1C1E] tracking-tight">사원증 잔액 관리</h1>
         <div className="flex items-center gap-2">
           <button
             onClick={() => { setInitAmount(balance.toString()); setShowInitModal(true); }}
@@ -304,7 +313,7 @@ const App = () => {
               className="mt-4 inline-flex items-center gap-1.5 bg-rose-50 rounded-full px-3 py-1"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
-              <span className="text-xs text-rose-500 font-medium">잔액 부족</span>
+              <span className="text-xs text-rose-500 font-medium">점심 잔액 부족</span>
             </motion.div>
           )}
         </motion.div>
@@ -387,7 +396,7 @@ const App = () => {
           ) : (
             <div className="divide-y divide-[#F2F2F7]">
               <AnimatePresence>
-                {transactions.slice(0, 20).map((transaction) => (
+                {pagedTransactions.map((transaction) => (
                   <motion.div
                     key={transaction.id}
                     exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
@@ -402,6 +411,31 @@ const App = () => {
                   </motion.div>
                 ))}
               </AnimatePresence>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-[#F2F2F7]">
+                  <button
+                    onClick={() => setCurrentPage(p => p - 1)}
+                    disabled={currentPage === 1}
+                    className="w-8 h-8 flex items-center justify-center rounded-full disabled:opacity-25 text-[#007AFF]"
+                  >
+                    <svg width="9" height="15" viewBox="0 0 9 15" fill="none">
+                      <path d="M8 1L1.5 7.5L8 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                  <span className="text-[13px] text-[#8E8E93] font-medium tabular-nums">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => p + 1)}
+                    disabled={currentPage === totalPages}
+                    className="w-8 h-8 flex items-center justify-center rounded-full disabled:opacity-25 text-[#007AFF]"
+                  >
+                    <svg width="9" height="15" viewBox="0 0 9 15" fill="none">
+                      <path d="M1 1L7.5 7.5L1 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

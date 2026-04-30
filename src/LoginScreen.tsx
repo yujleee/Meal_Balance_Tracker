@@ -35,8 +35,8 @@ const LoginScreen = () => {
 
         {/* 타이틀 */}
         <div className="text-center mb-10">
-          <h1 className="text-[28px] font-bold text-[#1C1C1E] tracking-tight mb-1">식대 관리</h1>
-          <p className="text-[15px] text-[#8E8E93]">식대 잔액을 간편하게 관리하세요</p>
+          <h1 className="text-[28px] font-bold text-[#1C1C1E] tracking-tight mb-1">사원증 잔액 관리</h1>
+          <p className="text-[15px] text-[#8E8E93]">사원증 잔액을 간편하게 관리하세요</p>
         </div>
 
         {/* 로그인 버튼 */}
