@@ -340,6 +340,13 @@ const App = () => {
     setTutorialStep(s => s - 1);
   };
 
+  const isAnyModalOpen = showInitModal || showDeleteConfirm || showChargeModal || showCustomModal;
+
+  useEffect(() => {
+    document.body.style.overflow = isAnyModalOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isAnyModalOpen]);
+
   const totalPages = Math.max(1, Math.ceil(transactions.length / PAGE_SIZE));
   const pagedTransactions = transactions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
