@@ -100,6 +100,39 @@ const TransactionItem = ({
   );
 };
 
+const TUTORIAL_SLIDES = [
+  {
+    iconBg: '#007AFF',
+    emoji: '🍱',
+    title: '빠른 잔액 차감',
+    desc: '점심·커피 버튼으로 한 번에 차감하거나\n직접 금액과 항목을 입력할 수도 있어요.',
+  },
+  {
+    iconBg: '#34C759',
+    emoji: '💳',
+    title: '잔액 충전',
+    desc: '식대가 지급되면 [+ 충전하기] 버튼으로\n잔액을 충전하세요.',
+  },
+  {
+    iconBg: '#FF3B30',
+    emoji: '🗑️',
+    title: '내역 삭제',
+    desc: '내역을 왼쪽으로 밀면 삭제 버튼이 나타나요.\n삭제하면 잔액도 함께 복구돼요.',
+  },
+  {
+    iconBg: '#636366',
+    emoji: '⚙️',
+    title: '잔액 직접 설정',
+    desc: '우측 상단 ⚙️ 버튼을 탭하면\n현재 잔액을 직접 수정할 수 있어요.',
+  },
+  {
+    iconBg: '#1C1C1E',
+    emoji: '👤',
+    title: '로그아웃',
+    desc: '우측 상단 프로필 사진을 탭하면\n로그아웃됩니다.',
+  },
+];
+
 const App = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -118,6 +151,9 @@ const App = () => {
   const [initAmount, setInitAmount] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 12;
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+  const [slideDir, setSlideDir] = useState(1);
 
   const [presets] = useState<Preset[]>([
     { id: 'lunch', label: '점심', amount: 7000, emoji: '🍱' },
@@ -129,6 +165,11 @@ const App = () => {
     return onAuthStateChanged(auth, (u) => {
       setUser(u);
       setAuthLoading(false);
+      setBalance(0);
+      setTransactions([]);
+      setCurrentPage(1);
+      setLastAction(null);
+      setShowUndo(false);
     });
   }, []);
 
@@ -143,7 +184,7 @@ const App = () => {
         setIsNewUser(false);
       } else {
         setIsNewUser(true);
-        setShowInitModal(true);
+        setShowTutorial(true);
       }
     });
     return unsub;
@@ -251,6 +292,27 @@ const App = () => {
   };
 
   const formatCurrency = (amount: number) => amount.toLocaleString('ko-KR');
+
+  const completeTutorial = () => {
+    setShowTutorial(false);
+    setTutorialStep(0);
+    setSlideDir(1);
+    setShowInitModal(true);
+  };
+
+  const tutorialNext = () => {
+    setSlideDir(1);
+    if (tutorialStep < TUTORIAL_SLIDES.length - 1) {
+      setTutorialStep(s => s + 1);
+    } else {
+      completeTutorial();
+    }
+  };
+
+  const tutorialPrev = () => {
+    setSlideDir(-1);
+    setTutorialStep(s => s - 1);
+  };
 
   const totalPages = Math.max(1, Math.ceil(transactions.length / PAGE_SIZE));
   const pagedTransactions = transactions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -440,6 +502,95 @@ const App = () => {
           )}
         </div>
       </div>
+
+      {/* 튜토리얼 */}
+      <AnimatePresence>
+        {showTutorial && (() => {
+          const slide = TUTORIAL_SLIDES[tutorialStep];
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-white z-50 flex flex-col"
+            >
+              {/* 상단 */}
+              <div className="flex items-center justify-between px-5 pt-14 pb-2">
+                <button
+                  onClick={tutorialPrev}
+                  className={`w-8 h-8 flex items-center justify-center text-[#007AFF] ${tutorialStep === 0 ? 'invisible' : ''}`}
+                >
+                  <svg width="9" height="15" viewBox="0 0 9 15" fill="none">
+                    <path d="M8 1L1.5 7.5L8 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={completeTutorial}
+                  className="text-[14px] font-medium text-[#8E8E93]"
+                >
+                  건너뛰기
+                </button>
+              </div>
+
+              {/* 슬라이드 콘텐츠 */}
+              <div className="flex-1 flex flex-col items-center justify-center px-8">
+                <AnimatePresence mode="wait" custom={slideDir}>
+                  <motion.div
+                    key={tutorialStep}
+                    custom={slideDir}
+                    variants={{
+                      enter: (d: number) => ({ x: d * 260, opacity: 0 }),
+                      center: { x: 0, opacity: 1 },
+                      exit: (d: number) => ({ x: d * -260, opacity: 0 }),
+                    }}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                    className="flex flex-col items-center text-center w-full"
+                  >
+                    <div
+                      className="w-28 h-28 rounded-full flex items-center justify-center mb-8 shadow-lg"
+                      style={{ backgroundColor: slide.iconBg }}
+                    >
+                      <span className="text-5xl">{slide.emoji}</span>
+                    </div>
+                    <h2 className="text-[24px] font-bold text-[#1C1C1E] mb-3 tracking-tight">
+                      {slide.title}
+                    </h2>
+                    <p className="text-[16px] text-[#8E8E93] leading-relaxed whitespace-pre-line">
+                      {slide.desc}
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* 하단 */}
+              <div className="px-6 pb-12">
+                <div className="flex justify-center gap-1.5 mb-8">
+                  {TUTORIAL_SLIDES.map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-1.5 rounded-full transition-all duration-300"
+                      style={{
+                        width: i === tutorialStep ? 20 : 6,
+                        backgroundColor: i === tutorialStep ? '#007AFF' : '#D1D1D6',
+                      }}
+                    />
+                  ))}
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={tutorialNext}
+                  className="w-full bg-[#007AFF] text-white rounded-2xl py-4 text-[16px] font-semibold"
+                >
+                  {tutorialStep === TUTORIAL_SLIDES.length - 1 ? '시작하기' : '다음'}
+                </motion.button>
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* 잔액 설정 Bottom Sheet */}
       <AnimatePresence>
