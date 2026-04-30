@@ -178,6 +178,10 @@ const App = () => {
       setShowTutorial(false);
       setShowInitModal(false);
       setTutorialStep(0);
+      setInitAmount('');
+      setChargeAmount('');
+      setCustomAmount('');
+      setCustomLabel('');
     });
   }, []);
 
