@@ -174,6 +174,10 @@ const App = () => {
       setShowUndo(false);
       setShowDeleteConfirm(false);
       setDeleteLoading(false);
+      setIsNewUser(false);
+      setShowTutorial(false);
+      setShowInitModal(false);
+      setTutorialStep(0);
     });
   }, []);
 
@@ -186,6 +190,8 @@ const App = () => {
         setBalance(data.balance ?? 0);
         setTransactions(data.transactions ?? []);
         setIsNewUser(false);
+        setShowTutorial(false);
+        setShowInitModal(false);
       } else {
         setIsNewUser(true);
         setShowTutorial(true);
