@@ -172,6 +172,8 @@ const App = () => {
       setCurrentPage(1);
       setLastAction(null);
       setShowUndo(false);
+      setShowDeleteConfirm(false);
+      setDeleteLoading(false);
     });
   }, []);
 
@@ -205,7 +207,7 @@ const App = () => {
   };
 
   const handleSetInitialBalance = () => {
-    const amount = parseFloat(initAmount);
+    const amount = parseFloat(initAmount.replace(/,/g, ''));
     if (isNaN(amount) || amount < 0) return;
     save(amount, transactions);
     setInitAmount('');
@@ -359,7 +361,7 @@ const App = () => {
         <h1 className="text-[28px] font-bold text-[#1C1C1E] tracking-tight">사원증 잔액 관리</h1>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => { setInitAmount(balance.toString()); setShowInitModal(true); }}
+            onClick={() => { setInitAmount(balance ? balance.toLocaleString('ko-KR') : ''); setShowInitModal(true); }}
             className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-[#8E8E93]"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -643,9 +645,13 @@ const App = () => {
                 <h3 className="text-[18px] font-bold text-[#1C1C1E] mb-1">잔액 설정</h3>
                 <p className="text-sm text-[#8E8E93] mb-5">현재 보유한 식대 잔액을 입력해주세요</p>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={initAmount}
-                  onChange={(e) => setInitAmount(e.target.value)}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^0-9]/g, '');
+                    setInitAmount(digits ? Number(digits).toLocaleString('ko-KR') : '');
+                  }}
                   onKeyDown={(e) => e.key === 'Enter' && handleSetInitialBalance()}
                   placeholder="0"
                   className="w-full px-4 py-3.5 rounded-xl bg-[#F2F2F7] text-[#1C1C1E] text-[16px] focus:outline-none mb-3"
