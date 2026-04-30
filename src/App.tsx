@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import type { PanInfo } from 'framer-motion';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { onAuthStateChanged, signOut, deleteUser, reauthenticateWithPopup, User } from 'firebase/auth';
+import { doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
+import { auth, db, provider } from './firebase';
 import LoginScreen from './LoginScreen';
 
 interface Transaction {
@@ -154,6 +154,8 @@ const App = () => {
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [slideDir, setSlideDir] = useState(1);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [presets] = useState<Preset[]>([
     { id: 'lunch', label: '점심', amount: 7000, emoji: '🍱' },
@@ -292,6 +294,28 @@ const App = () => {
   };
 
   const formatCurrency = (amount: number) => amount.toLocaleString('ko-KR');
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    setDeleteLoading(true);
+    try {
+      await deleteDoc(doc(db, 'users', user.uid));
+      await deleteUser(user);
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code;
+      if (code === 'auth/requires-recent-login') {
+        try {
+          await reauthenticateWithPopup(user, provider);
+          await deleteDoc(doc(db, 'users', user.uid));
+          await deleteUser(user);
+        } catch {
+          setDeleteLoading(false);
+        }
+      } else {
+        setDeleteLoading(false);
+      }
+    }
+  };
 
   const completeTutorial = () => {
     setShowTutorial(false);
@@ -547,7 +571,14 @@ const App = () => {
                     animate="center"
                     exit="exit"
                     transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-                    className="flex flex-col items-center text-center w-full"
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.15}
+                    onDragEnd={(_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+                      if (info.offset.x < -50 || info.velocity.x < -300) tutorialNext();
+                      else if ((info.offset.x > 50 || info.velocity.x > 300) && tutorialStep > 0) tutorialPrev();
+                    }}
+                    className="flex flex-col items-center text-center w-full cursor-grab active:cursor-grabbing"
                   >
                     <div
                       className="w-28 h-28 rounded-full flex items-center justify-center mb-8 shadow-lg"
@@ -630,6 +661,64 @@ const App = () => {
                   <button onClick={handleSetInitialBalance}
                     className="flex-1 py-3.5 rounded-xl bg-[#007AFF] text-white text-[15px] font-semibold">
                     설정
+                  </button>
+                </div>
+                {!isNewUser && (
+                  <button
+                    onClick={() => { setShowInitModal(false); setShowDeleteConfirm(true); }}
+                    className="w-full mt-4 py-2 text-[#FF3B30] text-[14px] font-medium"
+                  >
+                    탈퇴하기
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* 탈퇴 확인 Bottom Sheet */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+              onClick={() => !deleteLoading && setShowDeleteConfirm(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed inset-x-0 bottom-0 bg-white rounded-t-3xl z-50"
+            >
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-9 h-1 rounded-full bg-[#D1D1D6]" />
+              </div>
+              <div className="px-6 pb-10 pt-4">
+                <div className="flex justify-center mb-5">
+                  <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-[18px] font-bold text-[#1C1C1E] text-center mb-2">정말 탈퇴하시겠어요?</h3>
+                <p className="text-[14px] text-[#8E8E93] text-center mb-6 leading-relaxed">
+                  탈퇴하면 모든 잔액과 내역이 삭제되며<br />복구할 수 없습니다.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={deleteLoading}
+                    className="flex-1 py-3.5 rounded-xl bg-[#F2F2F7] text-[#1C1C1E] text-[15px] font-semibold disabled:opacity-50"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleteLoading}
+                    className="flex-1 py-3.5 rounded-xl bg-[#FF3B30] text-white text-[15px] font-semibold disabled:opacity-50"
+                  >
+                    {deleteLoading ? '처리 중...' : '탈퇴하기'}
                   </button>
                 </div>
               </div>
