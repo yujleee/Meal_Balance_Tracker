@@ -51,5 +51,5 @@ export default defineConfig({
       }
     })
   ],
-  base: './', // GitHub Pages 배포를 위한 상대 경로 설정
+  base: '/Meal_Balance_Tracker/', // GitHub 저장소 이름과 일치시켜주세요
 });
