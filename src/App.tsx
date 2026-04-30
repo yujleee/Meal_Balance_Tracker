@@ -184,7 +184,7 @@ const App = () => {
   };
 
   const handleCharge = () => {
-    const amount = parseFloat(chargeAmount);
+    const amount = parseFloat(chargeAmount.replace(/,/g, ''));
     if (!amount || amount <= 0) return;
     const transaction: Transaction = {
       id: Date.now().toString(), type: 'charge', amount, label: '잔액 충전', timestamp: Date.now(),
@@ -506,11 +506,15 @@ const App = () => {
               <div className="px-6 pb-10 pt-2">
                 <h3 className="text-[18px] font-bold text-[#1C1C1E] mb-5">잔액 충전</h3>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={chargeAmount}
-                  onChange={(e) => setChargeAmount(e.target.value)}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^0-9]/g, '');
+                    setChargeAmount(digits ? Number(digits).toLocaleString('ko-KR') : '');
+                  }}
                   onKeyDown={(e) => e.key === 'Enter' && handleCharge()}
-                  placeholder="충전 금액을 입력하세요"
+                  placeholder="0"
                   className="w-full px-4 py-3.5 rounded-xl bg-[#F2F2F7] text-[#1C1C1E] text-[16px] focus:outline-none mb-3"
                   autoFocus
                 />
