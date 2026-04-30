@@ -150,7 +150,7 @@ const App = () => {
   const [showInitModal, setShowInitModal] = useState(false);
   const [initAmount, setInitAmount] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 12;
+  const PAGE_SIZE = 10;
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [slideDir, setSlideDir] = useState(1);
