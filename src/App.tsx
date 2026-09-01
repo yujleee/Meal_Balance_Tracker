@@ -23,7 +23,7 @@ interface Preset {
 
 const EXPENSE_ICONS: Record<string, string> = {
   '점심': '🍱',
-  '커피 L': '☕',
+  '싸이버거': '🍔',
   '커피 S': '🥤',
   '잔액 충전': '💳',
 };
@@ -159,7 +159,7 @@ const App = () => {
 
   const [presets] = useState<Preset[]>([
     { id: 'lunch', label: '점심', amount: 7000, emoji: '🍱' },
-    { id: 'coffee-l', label: '커피 L', amount: 1500, emoji: '☕' },
+    { id: 'burger', label: '싸이버거', amount: 6930, emoji: '🍔' },
     { id: 'coffee-s', label: '커피 S', amount: 990, emoji: '🥤' },
   ]);
 
