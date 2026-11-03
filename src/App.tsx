@@ -134,6 +134,8 @@ const TUTORIAL_SLIDES = [
 ];
 
 const App = () => {
+  const PAGE_SIZE = 10;
+  const MAX_TRANSACTION_COUNT = PAGE_SIZE * 5;
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isNewUser, setIsNewUser] = useState(false);
@@ -150,7 +152,6 @@ const App = () => {
   const [showInitModal, setShowInitModal] = useState(false);
   const [initAmount, setInitAmount] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 10;
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [slideDir, setSlideDir] = useState(1);
@@ -191,8 +192,13 @@ const App = () => {
     const unsub = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
+        const loadedTransactions = data.transactions ?? [];
+        const retainedTransactions = loadedTransactions.slice(0, MAX_TRANSACTION_COUNT);
         setBalance(data.balance ?? 0);
-        setTransactions(data.transactions ?? []);
+        setTransactions(retainedTransactions);
+        if (loadedTransactions.length > MAX_TRANSACTION_COUNT) {
+          void setDoc(doc(db, 'users', user.uid), { transactions: retainedTransactions }, { merge: true });
+        }
         setIsNewUser(false);
         setShowTutorial(false);
         setShowInitModal(false);
@@ -213,7 +219,9 @@ const App = () => {
 
   const save = (newBalance: number, newTransactions: Transaction[]) => {
     if (!user) return;
-    setDoc(doc(db, 'users', user.uid), { balance: newBalance, transactions: newTransactions });
+    const retainedTransactions = newTransactions.slice(0, MAX_TRANSACTION_COUNT);
+    setTransactions(retainedTransactions);
+    void setDoc(doc(db, 'users', user.uid), { balance: newBalance, transactions: retainedTransactions });
   };
 
   const handleSetInitialBalance = () => {
